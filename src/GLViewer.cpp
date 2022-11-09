@@ -88,8 +88,8 @@ float const id_colors[5][3] ={
 
 float const zone_colors[3][3] = {
 	{1, 0, 0},
-	{1, 0, 1},
-	{0, 0, 1}
+	{1, 1, 0},
+	{0, 1, 0}
 };
 
 inline sl::float4 generateColorId(int idx) {
