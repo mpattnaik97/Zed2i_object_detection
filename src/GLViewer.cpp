@@ -86,6 +86,12 @@ float const id_colors[5][3] ={
 	{.989f, .388f, .419f}
 };
 
+float const zone_colors[3][3] = {
+	{1, 0, 0},
+	{1, 0, 1},
+	{0, 0, 1}
+};
+
 inline sl::float4 generateColorId(int idx) {
 	if (idx < 0) return sl::float4(236, 184, 36, 255);
 	int const offset = idx % 5;
@@ -263,7 +269,15 @@ void GLViewer::updateView(sl::Mat image, sl::Objects &objs, int fps)
 				else 
 				{
 					sl::float3 pos(objs.object_list[i].position.x, objs.object_list[i].bounding_box[0].y, objs.object_list[i].position.z);
-					createIDRendering(pos, clr_id, objs.object_list[i].id, objs.object_list[i].position.z);
+					float distance = sqrt(pow(objs.object_list[i].position.x, 2) + pow(objs.object_list[i].position.y, 2) + pow(objs.object_list[i].position.z, 2));
+					if (distance > 5.0f)
+						clr_id = sl::float4(zone_colors[2][0], zone_colors[2][1], zone_colors[2][2], 1.0f);
+					else if(distance > 4.0f)
+						clr_id = sl::float4(zone_colors[1][0], zone_colors[1][1], zone_colors[1][2], 1.0f);
+					else
+						clr_id = sl::float4(zone_colors[0][0], zone_colors[0][1], zone_colors[0][2], 1.0f);
+					
+					createIDRendering(pos, clr_id, objs.object_list[i].id, distance);
 					setFps(fps);
 				}
 				createBboxRendering(bb_, clr_id);
@@ -286,7 +300,7 @@ void GLViewer::createBboxRendering(std::vector<sl::float3> &bbox, sl::float4 bbo
 
 void GLViewer::createIDRendering(sl::float3 & center, sl::float4 clr, unsigned int id, float distance) {
 	ObjectClassName tmp;
-	tmp.name = "ID: " + std::to_string(id) + " | Distance " + std::to_string(-distance);
+	tmp.name = "ID: " + std::to_string(id) + " | Distance: " + std::to_string(distance);
 	tmp.color = clr;
 	tmp.position = center; // Reference point
 	objectsName.push_back(tmp);

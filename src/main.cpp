@@ -92,7 +92,7 @@ int main(int argc, char **argv) {
 
 	// Configure object detection runtime parameters
 	ObjectDetectionRuntimeParameters objectTracker_parameters_rt;
-	int detection_confidence = 70;
+	int detection_confidence = 75;
 	objectTracker_parameters_rt.detection_confidence_threshold = detection_confidence;
 	// To select a set of specific object classes, like persons, vehicles and animals for instance:
 	objectTracker_parameters_rt.object_class_filter = {OBJECT_CLASS::PERSON/*, OBJECT_CLASS::ELECTRONICS , OBJECT_CLASS::VEHICLE, OBJECT_CLASS::ANIMAL*/ };
