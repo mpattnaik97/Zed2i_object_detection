@@ -1,5 +1,6 @@
 ﻿#include "GLViewer.hpp"
 #include <random>
+#include <iostream>
 
 #if defined(_DEBUG) && defined(_WIN32)
 #error "This sample should not be built in Debug mode, use RelWithDebInfo if you want to do step by step."
@@ -62,6 +63,8 @@ GLchar* SK_FRAGMENT_SHADER =
 const float grid_size = 15.0f;
 
 GLViewer* currentInstance_ = nullptr;
+
+std::mutex logObjectMtx;
 
 float const class_colors[6][3] = {
 	{ 44.0f, 117.0f, 255.0f}, // PEOPLE
@@ -256,7 +259,8 @@ void GLViewer::updateView(sl::Mat image, sl::Objects &objs, int fps)
 	BBox_edges.clear();
 	BBox_faces.clear();
 	objectsName.clear();
-
+	std::map<int, float> objectDistanceMap;
+	float distance = 0;
 	for (unsigned int i = 0; i < objs.object_list.size(); i++) {
 		if (renderObject(objs.object_list[i], isTrackingON_)) {
 			auto bb_ = objs.object_list[i].bounding_box;
@@ -269,14 +273,14 @@ void GLViewer::updateView(sl::Mat image, sl::Objects &objs, int fps)
 				else 
 				{
 					sl::float3 pos(objs.object_list[i].position.x, objs.object_list[i].bounding_box[0].y, objs.object_list[i].position.z);
-					float distance = sqrt(pow(objs.object_list[i].position.x, 2) + pow(objs.object_list[i].position.y, 2) + pow(objs.object_list[i].position.z, 2));
+					distance = sqrt(pow(objs.object_list[i].position.x, 2) + pow(objs.object_list[i].position.y, 2) + pow(objs.object_list[i].position.z, 2));
 					if (distance > 5.0f)
 						clr_id = sl::float4(zone_colors[2][0], zone_colors[2][1], zone_colors[2][2], 1.0f);
 					else if(distance > 4.0f)
 						clr_id = sl::float4(zone_colors[1][0], zone_colors[1][1], zone_colors[1][2], 1.0f);
 					else
 						clr_id = sl::float4(zone_colors[0][0], zone_colors[0][1], zone_colors[0][2], 1.0f);
-					
+					objectDistanceMap[objs.object_list[i].id] = distance;
 					createIDRendering(pos, clr_id, objs.object_list[i].id, distance);
 					setFps(fps);
 				}
@@ -284,7 +288,58 @@ void GLViewer::updateView(sl::Mat image, sl::Objects &objs, int fps)
 			}
 		}
 	}
+	if(objs.object_list.size() == objectDistanceMap.size())
+		LogObject(objs.object_list, objectDistanceMap);
 	mtx.unlock();
+}
+
+template<typename ... Args>
+std::string string_format(const std::string& format, Args ... args)
+{
+	int size_s = std::snprintf(nullptr, 0, format.c_str(), args ...) + 1; // Extra space for '\0'
+	if (size_s <= 0) { throw std::runtime_error("Error during formatting."); }
+	auto size = static_cast<size_t>(size_s);
+	std::unique_ptr<char[]> buf(new char[size]);
+	std::snprintf(buf.get(), size, format.c_str(), args ...);
+	return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
+}
+
+void GLViewer::LogObject(std::vector<sl::ObjectData> objectList, std::map<int, float> objectDistanceMap)
+{
+	const std::lock_guard<std::mutex> lock(logObjectMtx);
+	
+	std::ofstream log;
+	log.open("logObjects.txt", std::ios::app);
+
+	if (!log)
+	{
+		std::cout << "Cannot open log objects file";
+		return;
+	}
+
+	int i = 0;
+
+	std::for_each(objectList.begin(), objectList.end(), [&](sl::ObjectData& object)
+	{
+		//time_t now = time(0);
+
+		//// convert now to string form
+		//char* dt = ctime(&now);		
+		//std::string date_time(dt, dt + strlen(dt) - 1);
+		std::string date_time = time_in_HH_MM_SS_MMM();
+
+		std::string buffer = string_format("[%s] - Object id: %d, Object position: (%f, %f, %f), Object distance: %f \n", date_time.c_str(), object.id, object.position.x, object.position.y, object.position.z, objectDistanceMap[object.id]);
+
+		std::cout << buffer;
+
+		log << buffer;
+
+	});
+
+	std::cout << "\n";
+	log << "\n";
+
+	log.close();
 }
 
 void GLViewer::createBboxRendering(std::vector<sl::float3> &bbox, sl::float4 bbox_clr) {
@@ -330,6 +385,12 @@ void GLViewer::draw() {
 	BBox_faces.draw();
 	printText();
 	printText("FPS: " + std::to_string(fps));
+	time_t now = time(0);
+
+	// convert now to string form
+	//std::string dt = ctime(&now);
+	std::string dt = time_in_HH_MM_SS_MMM();
+	printText("TimeStamp: " + dt, 50);
     glUseProgram(0);
 }
 
@@ -372,6 +433,46 @@ void GLViewer::printText(std::string text)
 		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, string[i]);
 	
 	glEnable(GL_BLEND);
+}
+
+void GLViewer::printText(std::string text, int row)
+{
+	sl::Resolution wnd_size(glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT));
+	glDisable(GL_BLEND);
+
+	glColor3f(1, 0, 1);
+	const auto* string = text.c_str();
+	glWindowPos2f(50, wnd_size.height - 50 - row);
+	int len = (int)strlen(string);
+	for (int i = 0; i < len; i++)
+		glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, string[i]);
+
+	glEnable(GL_BLEND);
+}
+
+std::string GLViewer::time_in_HH_MM_SS_MMM()
+{
+	using namespace std::chrono;
+
+	// get current time
+	auto now = system_clock::now();
+
+	// get number of milliseconds for the current second
+	// (remainder after division into seconds)
+	auto ms = duration_cast<milliseconds>(now.time_since_epoch()) % 1000;
+
+	// convert to std::time_t in order to convert to std::tm (broken time)
+	auto timer = system_clock::to_time_t(now);
+
+	// convert to broken time
+	std::tm bt = *std::localtime(&timer);
+
+	std::ostringstream oss;
+
+	oss << std::put_time(&bt, "%H:%M:%S"); // HH:MM:SS
+	oss << '.' << std::setfill('0') << std::setw(3) << ms.count();
+
+	return oss.str();
 }
 
 void GLViewer::clearInputs() {

@@ -152,6 +152,7 @@ public:
     bool isAvailable();
     void init(int argc, char **argv, sl::CameraParameters param, bool isTrackingON);
     void updateView(sl::Mat image, sl::Objects &obj, int fps);
+    void LogObject(std::vector<sl::ObjectData> objectList, std::map<int, float> objectDistanceMap);
     void exit();
 
     void setFps(int fps) { this->fps = fps; }
@@ -169,6 +170,8 @@ private:
 
     void printText();
     void printText(std::string text);
+    void printText(std::string text, int row);
+    std::string time_in_HH_MM_SS_MMM();
 
     // Glut functions callbacks
     static void drawCallback();
