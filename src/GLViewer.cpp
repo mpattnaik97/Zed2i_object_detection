@@ -282,7 +282,6 @@ void GLViewer::updateView(sl::Mat image, sl::Objects &objs, int fps)
 						clr_id = sl::float4(zone_colors[0][0], zone_colors[0][1], zone_colors[0][2], 1.0f);
 					objectDistanceMap[objs.object_list[i].id] = distance;
 					createIDRendering(pos, clr_id, objs.object_list[i].id, distance);
-					setFps(fps);
 				}
 				createBboxRendering(bb_, clr_id);
 			}
@@ -290,6 +289,7 @@ void GLViewer::updateView(sl::Mat image, sl::Objects &objs, int fps)
 	}
 	if(objs.object_list.size() == objectDistanceMap.size())
 		LogObject(objs.object_list, objectDistanceMap);
+	setFps(fps);
 	mtx.unlock();
 }
 
@@ -336,8 +336,11 @@ void GLViewer::LogObject(std::vector<sl::ObjectData> objectList, std::map<int, f
 
 	});
 
-	std::cout << "\n";
-	log << "\n";
+	if (!objectList.empty())
+	{
+		std::cout << "\n";
+		log << "\n";
+	}
 
 	log.close();
 }

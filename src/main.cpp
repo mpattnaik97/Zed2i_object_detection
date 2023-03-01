@@ -52,6 +52,7 @@ int main(int argc, char **argv) {
 	init_parameters.depth_mode = isJetson ? DEPTH_MODE::PERFORMANCE : DEPTH_MODE::ULTRA;
 	init_parameters.coordinate_system = COORDINATE_SYSTEM::RIGHT_HANDED_Y_UP;
 	init_parameters.coordinate_units = UNIT::METER;
+	init_parameters.sdk_verbose = 1;
 	parseArgs(argc, argv, init_parameters);
 
 	// Open the camera
@@ -76,7 +77,7 @@ int main(int argc, char **argv) {
 	// Enable the Objects detection module
 	ObjectDetectionParameters obj_det_params;
 	obj_det_params.enable_tracking = true;
-	obj_det_params.detection_model = isJetson ? DETECTION_MODEL::MULTI_CLASS_BOX : DETECTION_MODEL::MULTI_CLASS_BOX_ACCURATE;
+	obj_det_params.detection_model = isJetson ? DETECTION_MODEL::MULTI_CLASS_BOX : DETECTION_MODEL::HUMAN_BODY_ACCURATE;
 
 	returned_state = zed.enableObjectDetection(obj_det_params);
 	if (returned_state != ERROR_CODE::SUCCESS) {
@@ -110,7 +111,7 @@ int main(int argc, char **argv) {
 	while (viewer.isAvailable()) {
 		// Grab images
 		if (zed.grab() == ERROR_CODE::SUCCESS) {
-			auto begin = std::chrono::high_resolution_clock::now();
+			//auto begin = std::chrono::high_resolution_clock::now();
 			// Retrieve left image
 			zed.retrieveImage(image, VIEW::LEFT, MEM::GPU);
 
@@ -118,10 +119,10 @@ int main(int argc, char **argv) {
 			zed.retrieveObjects(objects, objectTracker_parameters_rt);
 
 			//Update GL View
-			auto end = std::chrono::high_resolution_clock::now();
-			auto time_taken = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
+			//auto end = std::chrono::high_resolution_clock::now();
+			//auto time_taken = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
 			
-			viewer.updateView(image, objects, 1000 / time_taken);
+			viewer.updateView(image, objects, zed.getCurrentFPS());
 			//std::cout << "FPS: " << 1000 / time_taken;
 		}
 	}
